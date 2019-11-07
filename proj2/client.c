@@ -16,12 +16,12 @@
 
 #define N_OF_PORT   5   // # of port = 5
 
-void configureSocket(int clientSocket, int portNumber) {
+void configureSocket(int* clientSocket, int portNumber) {
 
     printf("configuring socket for port %d...\n", portNumber);
 
-    clientSocket = socket(PF_INET, SOCK_STREAM, 0);  // socket uses TCP
-    if (clientSocket == -1) {
+    *clientSocket = socket(PF_INET, SOCK_STREAM, 0);  // socket uses TCP
+    if (*clientSocket == -1) {
         printf("port %d socket error\n", portNumber);
     }
 
@@ -30,16 +30,16 @@ void configureSocket(int clientSocket, int portNumber) {
     return;
 }
 
-void socketNaming(struct sockaddr_in clientAddress, int clientSocket, int portNumber) {
+void socketNaming(struct sockaddr_in* clientAddress, int clientSocket, int portNumber) {
 
     printf("assigning a name to the socket for port %d...\n", portNumber);
-    memset(&clientAddress, 0x00, sizeof(clientAddress));   // init address to zero
+    memset(clientAddress, 0x00, sizeof(*clientAddress));   // init address to zero
 
-    clientAddress.sin_family = AF_INET;  // IPv4
-    clientAddress.sin_addr.s_addr = htonl(INADDR_ANY);   // TCP
-    clientAddress.sin_port = htons(portNumber); // port num
+    clientAddress->sin_family = AF_INET;  // IPv4
+    clientAddress->sin_addr.s_addr = htonl(INADDR_ANY);   // TCP
+    clientAddress->sin_port = htons(portNumber); // port num
 
-    if (bind(clientSocket, (struct sockaddr*)&clientAddress, sizeof(clientAddress)) < 0) {
+    if (bind(clientSocket, (struct sockaddr*)clientAddress, sizeof(*clientAddress)) < 0) {
         printf("port %d binding error\n", portNumber);
     }
     
@@ -48,17 +48,17 @@ void socketNaming(struct sockaddr_in clientAddress, int clientSocket, int portNu
     return;
 }
 
-void connect2Server(struct sockaddr_in serverAddress, int clientSocket, int portNumber) {
-    memset(&serverAddress, 0, sizeof(serverAddress));
-    serverAddress.sin_family = AF_INET; // IPv4
-    serverAddress.sin_port = htons(portNumber);    // port number
-    serverAddress.sin_addr.s_addr = inet_addr("192.168.56.101");    // server addr
+void connect2Server(struct sockaddr_in* serverAddress, int clientSocket, int portNumber) {
+    memset(serverAddress, 0, sizeof(*serverAddress));
+    serverAddress->sin_family = AF_INET; // IPv4
+    serverAddress->sin_port = htons(portNumber);    // port number
+    serverAddress->sin_addr.s_addr = inet_addr("192.168.56.101");    // server addr
 
-    if (connect(clientSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
+    if (connect(clientSocket, (struct sockaddr*)serverAddress, sizeof(*serverAddress)) < 0) {
         printf("port %d connecting fail\n", portNumber);
     }
 
-    printf("Port %d process done!\n\n", portNumber);
+    return;
 }
 
 int main(int argc, char* argv[]) {
@@ -77,15 +77,15 @@ int main(int argc, char* argv[]) {
         printf("Processing port %d...\n", portNumbers[i]);
     
         // 1. configure sockets
-        configureSocket(clientSocket[i], portNumbers[i]);
+        configureSocket(&clientSocket[i], portNumbers[i]);
 
         // 2. assigning a name to a sockets
-        socketNaming(clientAddress[i], clientSocket[i], portNumbers[i]);
+        socketNaming(&clientAddress[i], clientSocket[i], portNumbers[i]);
 
         // 3. connect each socket to the server
-        connect2Server(serverAddress, clientSocket[i], portNumbers[i]);
+        connect2Server(&serverAddress, clientSocket[i], portNumbers[i]);
 
-        printf("Port %d process done!\n\n", portList[i]);
+        printf("Port %d process done!\n\n", portNumbers[i]);
     }
 
     return 0;
