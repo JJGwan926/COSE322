@@ -16,6 +16,12 @@
 
 #define N_OF_PORT   5   // # of port = 5
 
+void initPorts(int* portNumbers, int seed) {
+    for (int i=0; i<N_OF_PORT; ++i) {
+        portNumbers[i] = (i+1) * seed;
+    }
+}
+
 void configureSocket(int* clientSocket, int portNumber) {
 
     printf("configuring socket for port %d...\n", portNumber);
@@ -61,18 +67,24 @@ void connect2Server(struct sockaddr_in* serverAddress, int clientSocket, int por
     return;
 }
 
+void readServerWithThreads() {
+    while (1) {
+
+    }
+}
+
 int main(int argc, char* argv[]) {
 
     int clientSocket[N_OF_PORT], serverSocket[N_OF_PORT], portNumbers[N_OF_PORT];
     struct sockaddr_in clientAddress[N_OF_PORT], serverAddress;
+    pthread_t pThread[N_OF_PORT];
 
     int i;
 
     // using port number 1111, 2222, 3333, 4444, 5555
-    for (i=0; i<N_OF_PORT; ++i) {
-        portNumbers[i] = (i+1) * 1111;
-    }
+    initPorts(portNumbers, 1111);
 
+    // connect each sockets to the server
     for (i=0; i<N_OF_PORT; ++i) {
         printf("Processing port %d...\n", portNumbers[i]);
     
@@ -87,6 +99,8 @@ int main(int argc, char* argv[]) {
 
         printf("Port %d process done!\n\n", portNumbers[i]);
     }
+
+    readServerWithThreads();   // todo
 
     return 0;
 }
