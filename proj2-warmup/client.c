@@ -16,18 +16,20 @@
 
 #define N_OF_PORT   5   // # of port = 5
 
-void initPorts(int* portNumbers, int seed) {
+// set five port number with seed
+void init5sPorts(int* portNumbers, int seed) {
     for (int i=0; i<N_OF_PORT; ++i) {
         portNumbers[i] = (i+1) * seed;
     }
 }
 
+// set client socket
 void configureSocket(int* clientSocket, int portNumber) {
 
     printf("configuring socket for port %d...\n", portNumber);
 
     *clientSocket = socket(PF_INET, SOCK_STREAM, 0);  // socket uses TCP
-    if (*clientSocket == -1) {
+    if (*clientSocket == -1) {  // error
         printf("port %d socket error\n", portNumber);
     }
 
@@ -36,16 +38,17 @@ void configureSocket(int* clientSocket, int portNumber) {
     return;
 }
 
+// naming socket
 void socketNaming(struct sockaddr_in* clientAddress, int clientSocket, int portNumber) {
 
     printf("assigning a name to the socket for port %d...\n", portNumber);
-    memset(clientAddress, 0x00, sizeof(*clientAddress));   // init address to zero
+    memset(clientAddress, 0x00, sizeof(*clientAddress));   // clear address as zero
 
     clientAddress->sin_family = AF_INET;  // IPv4
     clientAddress->sin_addr.s_addr = htonl(INADDR_ANY);   // TCP
     clientAddress->sin_port = htons(portNumber); // port num
 
-    if (bind(clientSocket, (struct sockaddr*)clientAddress, sizeof(*clientAddress)) < 0) {
+    if (bind(clientSocket, (struct sockaddr*)clientAddress, sizeof(*clientAddress)) < 0) {  // error check
         printf("port %d binding error\n", portNumber);
     }
     
@@ -54,6 +57,7 @@ void socketNaming(struct sockaddr_in* clientAddress, int clientSocket, int portN
     return;
 }
 
+// connect socket to server
 void connect2Server(struct sockaddr_in* serverAddress, int clientSocket, int portNumber) {
     memset(serverAddress, 0, sizeof(*serverAddress));
     serverAddress->sin_family = AF_INET; // IPv4
@@ -71,18 +75,24 @@ void readServerWithThreads() {
     while (1) {
 
     }
+
+    return;
 }
 
 int main(int argc, char* argv[]) {
 
-    int clientSocket[N_OF_PORT], serverSocket[N_OF_PORT], portNumbers[N_OF_PORT];
-    struct sockaddr_in clientAddress[N_OF_PORT], serverAddress;
-    pthread_t pThread[N_OF_PORT];
+    int clientSocket[N_OF_PORT];    // client socket
+    int serverSocket[N_OF_PORT];    // server socket
+    int portNumbers[N_OF_PORT];     // port number for each sockets
+    struct sockaddr_in clientAddress[N_OF_PORT];    // address for each client
+    struct sockaddr_in serverAddress;               // server address
 
-    int i;
+    pthread_t   pThread[N_OF_PORT];   // thread
+
+    int i;  // index
 
     // using port number 1111, 2222, 3333, 4444, 5555
-    initPorts(portNumbers, 1111);
+    init5Ports(portNumbers, 1111);
 
     // connect each sockets to the server
     for (i=0; i<N_OF_PORT; ++i) {
