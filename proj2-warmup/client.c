@@ -14,13 +14,17 @@
 #include <unistd.h>
 #include <pthread.h>    // for thread
 
-#define N_OF_PORT   5   // # of port = 5
+#define N_OF_PORT   5       // # of port = 5
+#define MSG_SIZE    65536   // max size of received message
 
 // set five port number with seed
-void init5sPorts(int* portNumbers, int seed) {
+void init5Ports(int* portNumbers, int seed) {
+
     for (int i=0; i<N_OF_PORT; ++i) {
         portNumbers[i] = (i+1) * seed;
     }
+    
+    return;
 }
 
 // set client socket
@@ -59,6 +63,7 @@ void socketNaming(struct sockaddr_in* clientAddress, int clientSocket, int portN
 
 // connect socket to server
 void connect2Server(struct sockaddr_in* serverAddress, int clientSocket, int portNumber) {
+
     memset(serverAddress, 0, sizeof(*serverAddress));
     serverAddress->sin_family = AF_INET; // IPv4
     serverAddress->sin_port = htons(portNumber);    // port number
@@ -71,9 +76,22 @@ void connect2Server(struct sockaddr_in* serverAddress, int clientSocket, int por
     return;
 }
 
-void readServerWithThreads() {
-    while (1) {
+void receiveServerMsg(int clientSocket) {
 
+    int         msgLen;         // length of received message
+    char        msg[MSG_SIZE];  // received message
+
+    while ( (msgLen = recv(clientSocket, msg, MSG_SIZE, 0) ) != -1) {
+        printf("%s\n", msg);
+    }
+
+    return;
+}
+
+void closeSockets(int* clientSocket) {
+    
+    for (int i=0; i<N_OF_PORT; ++i) {
+        close(clientSocket[i]);
     }
 
     return;
@@ -82,12 +100,13 @@ void readServerWithThreads() {
 int main(int argc, char* argv[]) {
 
     int clientSocket[N_OF_PORT];    // client socket
-    int serverSocket[N_OF_PORT];    // server socket
     int portNumbers[N_OF_PORT];     // port number for each sockets
     struct sockaddr_in clientAddress[N_OF_PORT];    // address for each client
     struct sockaddr_in serverAddress;               // server address
 
-    pthread_t   pThread[N_OF_PORT];   // thread
+    pthread_t   pThread[N_OF_PORT]; // thread
+    int         threadId;           // thread id
+    char        message[MSG_SIZE];  // received message from server
 
     int i;  // index
 
@@ -98,10 +117,10 @@ int main(int argc, char* argv[]) {
     for (i=0; i<N_OF_PORT; ++i) {
         printf("Processing port %d...\n", portNumbers[i]);
     
-        // 1. configure sockets
+        // 1. configure a socket
         configureSocket(&clientSocket[i], portNumbers[i]);
 
-        // 2. assigning a name to a sockets
+        // 2. assigning a name to a socket
         socketNaming(&clientAddress[i], clientSocket[i], portNumbers[i]);
 
         // 3. connect each socket to the server
@@ -110,7 +129,10 @@ int main(int argc, char* argv[]) {
         printf("Port %d process done!\n\n", portNumbers[i]);
     }
 
-    readServerWithThreads();   // todo
+    receiveServerMsg(clientSocket[0]);
+
+    // close sockets
+    closeSockets(clientSocket); 
 
     return 0;
 }
