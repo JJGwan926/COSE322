@@ -31,14 +31,15 @@ void init5Ports(int* portNumbers, int seed) {
 // set client socket
 void configureSocket(int* clientSocket, int portNumber) {
 
-    printf("configuring socket for port %d...\n", portNumber);
+    printf("configuring socket for port %d...", portNumber);
 
     *clientSocket = socket(PF_INET, SOCK_STREAM, 0);  // socket uses TCP
     if (*clientSocket == -1) {  // error
-        printf("port %d socket error\n", portNumber);
+        printf("\nport %d socket error\n", portNumber);
+        exit(1);
     }
 
-    printf("port %d configuration done!\n", portNumber);
+    printf("done.\n");
 
     return;
 }
@@ -46,7 +47,8 @@ void configureSocket(int* clientSocket, int portNumber) {
 // naming socket
 void socketNaming(struct sockaddr_in* clientAddress, int clientSocket, int portNumber) {
 
-    printf("assigning a name to the socket for port %d...\n", portNumber);
+    printf("assigning a name to the socket for port %d...", portNumber);
+    
     memset(clientAddress, 0x00, sizeof(*clientAddress));   // clear address as zero
 
     clientAddress->sin_family = AF_INET;  // IPv4
@@ -54,10 +56,11 @@ void socketNaming(struct sockaddr_in* clientAddress, int clientSocket, int portN
     clientAddress->sin_port = htons(portNumber); // port num
 
     if (bind(clientSocket, (struct sockaddr*)clientAddress, sizeof(*clientAddress)) < 0) {  // error check
-        printf("port %d binding error\n", portNumber);
+        printf("\nport %d binding error\n", portNumber);
+        exit(1);
     }
     
-    printf("assigning a name to the socket for port %d done!\n", portNumber);
+    printf("done.\n");
 
     return;
 }
@@ -65,14 +68,19 @@ void socketNaming(struct sockaddr_in* clientAddress, int clientSocket, int portN
 // connect socket to server
 void connect2Server(struct sockaddr_in* serverAddress, int clientSocket, int portNumber) {
 
+    printf("port %d connecting to server...", portNumber);
+
     memset(serverAddress, 0, sizeof(*serverAddress));
     serverAddress->sin_family = AF_INET; // IPv4
     serverAddress->sin_port = htons(portNumber);    // port number
     serverAddress->sin_addr.s_addr = inet_addr("192.168.56.101");    // server addr
 
     if (connect(clientSocket, (struct sockaddr*)serverAddress, sizeof(*serverAddress)) < 0) {
-        printf("port %d connecting fail\n", portNumber);
+        printf("\nport %d connecting fail\n", portNumber);
+        exit(1);
     }
+    
+    printf("done.\n");
 
     return;
 }
@@ -87,8 +95,8 @@ char* time2String(struct timeval *t, struct tm *times) {
 }
 
 char* getCurrentTime() {
-struct timeb itb;
 
+    struct timeb itb;
     struct tm   *lt;
     static char s[20];
 
@@ -103,14 +111,34 @@ struct timeb itb;
     return s;
 }
 
-void receiveServerMsg(int clientSocket) {
+void* receiveServerMsg(void* clientSocket) {
 
     int         msgLen;         // length of received message
-    char        msg[MSG_SIZE];  // received message    
+    char        msg[MSG_SIZE];  // received message
+    int         socketFd = *((int*)clientSocket);
 
-    while ( (msgLen = recv(clientSocket, msg, 10, 0) ) != -1) {
+//    while ( (msgLen = recv(socketFd, msg, MSG_SIZE, 0) ) != -1) {
+    for (int i=0; i<100; ++i) {
         printf("Received message: %s at %s\n", msg, getCurrentTime());
     }
+
+    return clientSocket;
+}
+
+void createThread(pthread_t* pThread, int clientSocket) {
+
+    printf("creating thread... ");
+
+    int     threadId;   // thread id
+    
+    threadId = pthread_create(pThread, NULL, receiveServerMsg, (void *)&clientSocket);  // create thread
+
+    if (threadId < 0) {     // error
+        perror("thread creation error");
+        exit(0);
+    }
+
+    printf("done.\n");
 
     return;
 }
@@ -132,8 +160,8 @@ int main(int argc, char* argv[]) {
     struct sockaddr_in serverAddress;               // server address
 
     pthread_t   pThread[N_OF_PORT]; // thread
-    int         threadId;           // thread id
     char        message[MSG_SIZE];  // received message from server
+    int         status;
 
     int i;  // index
 
@@ -156,9 +184,15 @@ int main(int argc, char* argv[]) {
         printf("Port %d process done!\n\n", portNumbers[i]);
     }
 
-    receiveServerMsg(clientSocket[0]);
+    // threads
+    for (i=0; i<N_OF_PORT; ++i) {
+        // create thread
+        createThread(&pThread[i], clientSocket[i]);
+    }
+    for (i=0; i<N_OF_PORT; ++i) {
+        pthread_join(pThread[i], (void*)&status);
+    }
 
-    // close sockets
     closeSockets(clientSocket); 
 
     return 0;
