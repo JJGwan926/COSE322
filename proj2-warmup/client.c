@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/timeb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -76,13 +77,39 @@ void connect2Server(struct sockaddr_in* serverAddress, int clientSocket, int por
     return;
 }
 
+char* time2String(struct timeval *t, struct tm *times) {
+    
+    static char s[20];
+    
+    sprintf(s, "%02d:%02d:%02d.%02ld\n", times->tm_hour, times->tm_min, times->tm_sec, t->tv_usec);
+
+    return s;
+}
+
+char* getCurrentTime() {
+struct timeb itb;
+
+    struct tm   *lt;
+    static char s[20];
+
+    ftime(&itb);
+
+    lt = localtime(&itb.time);
+
+    sprintf(s, "%02d:%02d:%02d.%03d"
+            , lt->tm_hour, lt->tm_min, lt->tm_sec
+            , itb.millitm);
+
+    return s;
+}
+
 void receiveServerMsg(int clientSocket) {
 
     int         msgLen;         // length of received message
-    char        msg[MSG_SIZE];  // received message
+    char        msg[MSG_SIZE];  // received message    
 
-    while ( (msgLen = recv(clientSocket, msg, MSG_SIZE, 0) ) != -1) {
-        printf("%s\n", msg);
+    while ( (msgLen = recv(clientSocket, msg, 10, 0) ) != -1) {
+        printf("Received message: %s at %s\n", msg, getCurrentTime());
     }
 
     return;
