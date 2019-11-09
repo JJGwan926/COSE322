@@ -18,6 +18,12 @@
 #define N_OF_PORT   5       // # of port = 5
 #define MSG_SIZE    65536   // max size of received message
 
+struct _pthreadArgs {
+    int*    clientSocket;
+    int     portNumber;
+};
+typedef struct _pthreadArgs PThreadArgs;
+
 // set five port number with seed
 void init5Ports(int* portNumbers, int seed) {
 
@@ -118,28 +124,47 @@ char* getCurrentTime() {
     return s;
 }
 
-void* receiveServerMsg(void* clientSocket) {
+void* receiveServerMsg(void* pThreadArgs) {
 
-    int         msgLen;         // length of received message
-    char        msg[MSG_SIZE];  // received message
-    int         socketFd = *((int*)clientSocket);
-    printf("sockFd: %d\n", socketFd);
+    int     msgLen;         // length of received message
+    char    msg[MSG_SIZE];  // received message
+    int     socketFd = *(((PThreadArgs*)pThreadArgs)->clientSocket);
+    int     portNumber = ((PThreadArgs*)pThreadArgs)->portNumber;
+
+    FILE*   fp;
+    char    logPath[20];
+
+    sprintf(logPath, "./log/%d.txt", portNumber);   // save path
+
+    fp = fopen(logPath, "w");   // open file
+    if (!fp) {  // error
+        printf("file open failed\n");
+        exit(1);
+    }
     
-    while ( (msgLen = recv(socketFd, msg, 10, 0) ) != -1) {
-        printf("%s  %d  %s\n", getCurrentTime(), strlen(msg), msg);
+//    while ( (msgLen = recv(socketFd, msg, 10, 0) ) != -1) {
+    for (int i=0; i<1000; ++i) {
+        char    logMsg[80];
+        msgLen = recv(socketFd, msg, 10, 0);
+        sprintf(logMsg, "%s  %d  %s\n", getCurrentTime(), msgLen, msg);
+        fputs(logMsg, fp); // write message to log
     }
 
+    fclose(fp); // close file
 
-    return clientSocket;
+    return pThreadArgs;
 }
 
-void createThread(pthread_t* pThread, int* clientSocket) {
+void createThread(pthread_t* pThread, int* clientSocket, int portNumber) {
 
     printf("creating thread... ");
 
-    int     threadId;   // thread id
-    
-    threadId = pthread_create(pThread, NULL, receiveServerMsg, (void *)clientSocket);  // create thread
+    int             threadId;   // thread id
+    PThreadArgs*    pThreadArgs = (PThreadArgs*)malloc(sizeof(pThreadArgs));    // pthread function arguments
+    pThreadArgs->clientSocket = clientSocket;
+    pThreadArgs->portNumber = portNumber;
+
+    threadId = pthread_create(pThread, NULL, receiveServerMsg, (void *)pThreadArgs);  // create thread
 
     if (threadId < 0) {     // error
         perror("thread creation error");
@@ -202,8 +227,7 @@ int main(int argc, char* argv[]) {
     // threads
     for (i=0; i<N_OF_PORT; ++i) {
         // create thread
-        printf("sock: %d\n", clientSocket[i]);
-        createThread(&pThread[i], &clientSocket[i]);
+        createThread(&pThread[i], &clientSocket[i], portNumbers[i]);
     }
     for (i=0; i<N_OF_PORT; ++i) {
         pthread_join(pThread[i], (void*)&status);
