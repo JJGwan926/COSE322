@@ -65,15 +65,22 @@ void socketNaming(struct sockaddr_in* clientAddress, int clientSocket, int portN
     return;
 }
 
+// configure server
+void configureServer(struct sockaddr_in* serverAddress, char* serverIp, int portNumber) {
+
+    memset(serverAddress, 0, sizeof(*serverAddress));
+
+    serverAddress->sin_family = AF_INET; // IPv4
+    serverAddress->sin_port = htons(portNumber);    // port number
+    serverAddress->sin_addr.s_addr = inet_addr(serverIp);    // server addr
+
+    return;
+}
+
 // connect socket to server
 void connect2Server(struct sockaddr_in* serverAddress, int clientSocket, int portNumber) {
 
     printf("port %d connecting to server...", portNumber);
-
-    memset(serverAddress, 0, sizeof(*serverAddress));
-    serverAddress->sin_family = AF_INET; // IPv4
-    serverAddress->sin_port = htons(portNumber);    // port number
-    serverAddress->sin_addr.s_addr = inet_addr("192.168.56.101");    // server addr
 
     if (connect(clientSocket, (struct sockaddr*)serverAddress, sizeof(*serverAddress)) < 0) {
         printf("\nport %d connecting fail\n", portNumber);
@@ -116,22 +123,23 @@ void* receiveServerMsg(void* clientSocket) {
     int         msgLen;         // length of received message
     char        msg[MSG_SIZE];  // received message
     int         socketFd = *((int*)clientSocket);
-
-//    while ( (msgLen = recv(socketFd, msg, MSG_SIZE, 0) ) != -1) {
-    for (int i=0; i<100; ++i) {
-        printf("Received message: %s at %s\n", msg, getCurrentTime());
+    printf("sockFd: %d\n", socketFd);
+    
+    while ( (msgLen = recv(socketFd, msg, 10, 0) ) != -1) {
+        printf("%s  %d  %s\n", getCurrentTime(), strlen(msg), msg);
     }
+
 
     return clientSocket;
 }
 
-void createThread(pthread_t* pThread, int clientSocket) {
+void createThread(pthread_t* pThread, int* clientSocket) {
 
     printf("creating thread... ");
 
     int     threadId;   // thread id
     
-    threadId = pthread_create(pThread, NULL, receiveServerMsg, (void *)&clientSocket);  // create thread
+    threadId = pthread_create(pThread, NULL, receiveServerMsg, (void *)clientSocket);  // create thread
 
     if (threadId < 0) {     // error
         perror("thread creation error");
@@ -154,8 +162,9 @@ void closeSockets(int* clientSocket) {
 
 int main(int argc, char* argv[]) {
 
-    int clientSocket[N_OF_PORT];    // client socket
-    int portNumbers[N_OF_PORT];     // port number for each sockets
+    int     clientSocket[N_OF_PORT];    // client socket
+    int     portNumbers[N_OF_PORT];     // port number for each sockets
+    char    serverIp[20];               // server ip address
     struct sockaddr_in clientAddress[N_OF_PORT];    // address for each client
     struct sockaddr_in serverAddress;               // server address
 
@@ -164,6 +173,9 @@ int main(int argc, char* argv[]) {
     int         status;
 
     int i;  // index
+
+    printf("Enter server IPv4 address: ");
+    scanf("%s", serverIp);
 
     // using port number 1111, 2222, 3333, 4444, 5555
     init5Ports(portNumbers, 1111);
@@ -178,7 +190,10 @@ int main(int argc, char* argv[]) {
         // 2. assigning a name to a socket
         socketNaming(&clientAddress[i], clientSocket[i], portNumbers[i]);
 
-        // 3. connect each socket to the server
+        // 3. configure server
+        configureServer(&serverAddress, serverIp, portNumbers[i]);
+
+        // 4. connect each socket to the server
         connect2Server(&serverAddress, clientSocket[i], portNumbers[i]);
 
         printf("Port %d process done!\n\n", portNumbers[i]);
@@ -187,7 +202,8 @@ int main(int argc, char* argv[]) {
     // threads
     for (i=0; i<N_OF_PORT; ++i) {
         // create thread
-        createThread(&pThread[i], clientSocket[i]);
+        printf("sock: %d\n", clientSocket[i]);
+        createThread(&pThread[i], &clientSocket[i]);
     }
     for (i=0; i<N_OF_PORT; ++i) {
         pthread_join(pThread[i], (void*)&status);
