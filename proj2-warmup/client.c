@@ -146,8 +146,9 @@ void* receiveServerMsg(void* pThreadArgs) {
     for (int i=0; i<1000; ++i) {
         char    logMsg[80];
         msgLen = recv(socketFd, msg, MSG_SIZE, 0);
-        sprintf(logMsg, "%s  %d  %s\n", getCurrentTime(), msgLen, msg);
+        sprintf(logMsg, "%s  %d  %s", getCurrentTime(), msgLen, msg);    
         fputs(logMsg, fp); // write message to log
+        fputs("\n", fp);
     }
 
     fclose(fp); // close file
