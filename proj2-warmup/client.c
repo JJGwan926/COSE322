@@ -98,15 +98,6 @@ void connect2Server(struct sockaddr_in* serverAddress, int clientSocket, int por
     return;
 }
 
-char* time2String(struct timeval *t, struct tm *times) {
-    
-    static char s[20];
-    
-    sprintf(s, "%02d:%02d:%02d.%02ld\n", times->tm_hour, times->tm_min, times->tm_sec, t->tv_usec);
-
-    return s;
-}
-
 char* getCurrentTime() {
 
     struct timeb itb;
