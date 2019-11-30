@@ -10,6 +10,8 @@
 #define PROC_DIRNAME    "proj2"
 #define PROC_FILENAME   "proj2-procfile"
 
+char    port_num[10];
+
 static unsigned int hook_impl(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
   /**
    *  Todo
@@ -23,13 +25,38 @@ static struct nf_hook_ops hook_struct {
    */
 }
 
+// custom open function for open proc file
+static int my_open(struct inode *inode, struct file *file) {
 
+  printk(KERN_INFO "Proc File Open!!\n");
+
+  return 0;
+}
+
+// custom read function for reading proc file
+static ssize_t my_read(struct file *file, char *buffer, size_t length, loff_t *offset) {
+
+  // copy kernel's data into user buffer
+  if ( copy_to_user(buffer, port_num, sizeof(port_num)) ) {   // copy_to_user returns 0 in error
+    return -EFAULT;
+  }
+
+  return length;
+}
+
+// custom write function for writing to proc file
+static ssize_t my_write(struct file *file, const char __user *user_buffer, size_t count, loff_t *ppos) {
+
+  sprintf(port_num, "7777")
+
+  return count;
+}
 
 static const struct file_operations proc_fops = {
-    .owner = THIS_MODULE,
-    .open = my_open,
-    .read = my_read,
-    .write = my_write,
+  .owner = THIS_MODULE,
+  .open = my_open,
+  .read = my_read,
+  .write = my_write,
 };
 
 static int __init hook_init(void) {
