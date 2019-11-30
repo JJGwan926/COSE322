@@ -6,6 +6,9 @@
 #include <linux/init.h>
 #include <linux/proc_fs.h>
 #include <linux/netfilter.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+#include <uapi/linux/netfilter_ipv4.h>
 
 // for parsing Ipv4 address from struct sk_buff
 #define NIPQUAD(addr) \
@@ -38,9 +41,9 @@ static unsigned int pre_routing_hook_impl(void *priv, struct sk_buff *skb, const
   // if destination port is 33333, then do forwarding
   if (ntohs(th->dest) == 33333) {
     // print captured packet info before manipulation
-    printk(KERN_INFO "Before manipulation\n")
+    printk(KERN_INFO "Before manipulation\n");
     printk(KERN_INFO "  PRE_ROUTING[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
-            ipheader->protocol,
+            ih->protocol,
             ntohs(th->source),  // 33333
             ntohs(th->dest),    // 33333
             NIPQUAD(ih->saddr),
@@ -52,9 +55,9 @@ static unsigned int pre_routing_hook_impl(void *priv, struct sk_buff *skb, const
     th->dest = htons(7777);
 
     // print manipulated packet info
-    printk(KERN_INFO "After manupulation\n")
+    printk(KERN_INFO "After manupulation\n");
     printk(KERN_INFO "  PRE_ROUTING[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
-            ipheader->protocol,
+            ih->protocol,
             ntohs(th->source),  // 7777
             ntohs(th->dest),    // 7777
             NIPQUAD(ih->saddr),
@@ -74,14 +77,16 @@ static unsigned int forward_hook_impl(void *priv, struct sk_buff *skb, const str
   // get tcp header to get src/dest port number
   struct tcphdr *th = tcp_hdr(skb);
 
-  // struct sk_buff *skb is packet
-  printk(KERN_INFO "  FORWARD[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
-            ipheader->protocol,
+  if (ntohs(th->source) == 7777 && ntohs(th->dest) == 7777) {
+    // struct sk_buff *skb is packet
+    printk(KERN_INFO "  FORWARD[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
+            ih->protocol,
             ntohs(th->source),  // should be 7777
             ntohs(th->dest),    // should be 7777
             NIPQUAD(ih->saddr),
             NIPQUAD(ih->daddr)
           );
+  }
   
   return NF_ACCEPT;   // do forwarding
 }
@@ -97,7 +102,7 @@ static unsigned int post_routing_hook_impl(void *priv, struct sk_buff *skb, cons
 
   // struct sk_buff *skb is packet
   printk(KERN_INFO "  POST_ROUTING[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
-            ipheader->protocol,
+            ih->protocol,
             ntohs(th->source),  // should be 7777
             ntohs(th->dest),    // should be 7777
             NIPQUAD(ih->saddr),
@@ -108,21 +113,21 @@ static unsigned int post_routing_hook_impl(void *priv, struct sk_buff *skb, cons
 }
 
 // struct for setting hook at pre routing
-static struct nf_hook_ops pre_routing_hook_struct {
+static struct nf_hook_ops pre_routing_hook_struct = {
   .hook = pre_routing_hook_impl,    // function to call
   .pf = PF_INET,                    // using TCP/IP protocol
   .hooknum = NF_INET_PRE_ROUTING,   // at NF_INET_PRE_ROUTING (hook point)
   .priority = NF_IP_PRI_FIRST       // set priority (doesn't matter)
 };
 // struct for setting hook at forward
-static struct nf_hook_ops forward_hook_struct {
+static struct nf_hook_ops forward_hook_struct = {
   .hook = forward_hook_impl,        // function to call
   .pf = PF_INET,                    // using TCP/IP protocol
   .hooknum = NF_INET_FORWARD,       // at NF_INET_FORWARD (hook point)
   .priority = NF_IP_PRI_FIRST       // set priority (doesn't matter)
 };
 // struct for setting hook at post routing
-static struct nf_hook_ops post_routing_hook_struct {
+static struct nf_hook_ops post_routing_hook_struct = {
   .hook = post_routing_hook_impl,   // function to call
   .pf = PF_INET,                    // using TCP/IP protocol
   .hooknum = NF_INET_PRE_ROUTING,   // at NF_INET_POST_ROUTING (hook point)
@@ -192,6 +197,7 @@ static int __init hook_init(void) {
 
 // module exit
 static void __exit hook_exit(void) {
+  
   remove_proc_entry(PROC_FILENAME, proc_dir);
   // unregister hook structures from netfilter
   nf_unregister_hook(&pre_routing_hook_struct);
