@@ -12,17 +12,31 @@
 
 char    port_num[10];
 
-static unsigned int hook_impl(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
+static unsigned int pre_routing_hook_impl(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
   /**
    *  Todo
    */
 }
 
-static struct nf_hook_ops hook_struct {
-  .hook = hook_impl
+static unsigned int forward_hook_impl(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
   /**
    *  Todo
    */
+}
+
+// struct for setting hook at pre_routing
+static struct nf_hook_ops pre_routing_hook_struct {
+  .hook = pre_routing_hook_impl,    // function to call
+  .pf = PF_INET,                    // using TCP/IP protocol
+  .hooknum = NF_INET_PRE_ROUTING,   // at NF_INET_PRE_ROUTING (hook point)
+  .priority = NF_IP_PRI_FIRST       // set priority (doesn't matter)
+};
+// struct for setting hook at forward
+static struct nf_hook_ops forward_hook_struct {
+  .hook = forward_hook_impl,        // function to call
+  .pf = PF_INET,                    // using TCP/IP protocol
+  .hooknum = NF_INET_FORWARD,       // at NF_INET_FORWARD (hook point)
+  .priority = NF_IP_PRI_FIRST       // set priority (doesn't matter)
 }
 
 // custom open function for open proc file
