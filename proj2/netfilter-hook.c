@@ -184,7 +184,8 @@ static int __init hook_init(void) {
   proc_file = proc_create(PROC_FILENAME, 0600, proc_dir, &proc_fops);
   // register hook structures to netfilter
   nf_register_hook(&pre_routing_hook_struct);
-  nf_register_hook(&forward_hook_impl);
+  nf_register_hook(&forward_hook_struct);
+  nf_register_hook(&post_routing_hook_struct);
   
   return 0;
 }
@@ -194,7 +195,8 @@ static void __exit hook_exit(void) {
   remove_proc_entry(PROC_FILENAME, proc_dir);
   // unregister hook structures from netfilter
   nf_unregister_hook(&pre_routing_hook_struct);
-  nf_unregister_hook(&forward_hook_impl);
+  nf_unregister_hook(&forward_hook_struct);
+  nf_unregister_hook(&post_routing_hook_struct);
   
   printk(KERN_INFO "LKM ends..\n");
 
