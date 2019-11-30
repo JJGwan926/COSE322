@@ -67,10 +67,28 @@ static unsigned int pre_routing_hook_impl(void *priv, struct sk_buff *skb, const
 // hook function for monitoring hook point "NF_INET_FORWARD"
 static unsigned int forward_hook_impl(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
   
+  // get ip header to get src/dest IPv4 address
+  struct iphdr  *ih = ip_hdr(skb);
+  // get tcp header to get src/dest port number
+  struct tcphdr *th = tcp_hdr(skb);
+
   // struct sk_buff *skb is packet
+  printk(KERN_INFO "  FORWARD[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
+            ipheader->protocol,
+            ntohs(th->source),  // should be 7777
+            ntohs(th->dest),    // should be 7777
+            NIPQUAD(ih->saddr),
+            NIPQUAD(ih->daddr)
+          );
+  
+  return NF_ACCEPT;   // do forwarding
 }
 
-// struct for setting hook at pre_routing
+static unsigned int post_routing_hook_impl(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
+  
+}
+
+// struct for setting hook at pre routing
 static struct nf_hook_ops pre_routing_hook_struct {
   .hook = pre_routing_hook_impl,    // function to call
   .pf = PF_INET,                    // using TCP/IP protocol
@@ -83,7 +101,14 @@ static struct nf_hook_ops forward_hook_struct {
   .pf = PF_INET,                    // using TCP/IP protocol
   .hooknum = NF_INET_FORWARD,       // at NF_INET_FORWARD (hook point)
   .priority = NF_IP_PRI_FIRST       // set priority (doesn't matter)
-}
+};
+// struct for setting hook at post routing
+static struct nf_hook_ops post_routing_hook_struct {
+  .hook = post_routing_hook_impl,   // function to call
+  .pf = PF_INET,                    // using TCP/IP protocol
+  .hooknum = NF_INET_PRE_ROUTING,   // at NF_INET_POST_ROUTING (hook point)
+  .priority = NF_IP_PRI_FIRST       // set priority (doesn't matter)
+};
 
 // custom open function for open proc file
 static int my_open(struct inode *inode, struct file *file) {
