@@ -1,0 +1,1 @@
+cmd_/home/mins/Desktop/proj2/proj2/netfilter-hook.ko := ld -r -m elf_x86_64 -T ./scripts/module-common.lds --build-id  -o /home/mins/Desktop/proj2/proj2/netfilter-hook.ko /home/mins/Desktop/proj2/proj2/netfilter-hook.o /home/mins/Desktop/proj2/proj2/netfilter-hook.mod.o
