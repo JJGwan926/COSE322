@@ -82,14 +82,18 @@ static int __init hook_init(void) {
   proc_dir = proc_mkdir(PROC_DIRNAME, NULL); 
   // create proc file in proc file system
   proc_file = proc_create(PROC_FILENAME, 0600, proc_dir, &proc_fops);
-  nf_register_hook(&hook_struct);
+  // register hook structures
+  nf_register_hook(&pre_routing_hook_struct);
+  nf_register_hook(&forward_hook_impl);
   return 0;
 }
 
 // module exit
 static void __exit hook_exit(void) {
   remove_proc_entry(PROC_FILENAME, PROC_DIRNAME);
-  nf_unregister_hook(&hook_struct);
+  // unregister hook structures
+  nf_unregister_hook(&pre_routing_hook_struct);
+  nf_unregister_hook(&forward_hook_impl);
 }
 
 module_init(hook_init);
