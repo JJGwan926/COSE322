@@ -42,6 +42,7 @@ static struct nf_hook_ops forward_hook_struct {
 // custom open function for open proc file
 static int my_open(struct inode *inode, struct file *file) {
 
+  // for debugging
   printk(KERN_INFO "Proc File Open!!\n");
 
   return 0;
@@ -61,11 +62,13 @@ static ssize_t my_read(struct file *file, char *buffer, size_t length, loff_t *o
 // custom write function for writing to proc file
 static ssize_t my_write(struct file *file, const char __user *user_buffer, size_t count, loff_t *ppos) {
 
+  // set port number to be used
   sprintf(port_num, "7777")
 
   return count;
 }
 
+// struct for setting proc file system
 static const struct file_operations proc_fops = {
   .owner = THIS_MODULE,
   .open = my_open,
@@ -73,6 +76,7 @@ static const struct file_operations proc_fops = {
   .write = my_write,
 };
 
+// module init
 static int __init hook_init(void) {
   // make directory in proc file system
   proc_dir = proc_mkdir(PROC_DIRNAME, NULL); 
@@ -82,6 +86,7 @@ static int __init hook_init(void) {
   return 0;
 }
 
+// module exit
 static void __exit hook_exit(void) {
   remove_proc_entry(PROC_FILENAME, PROC_DIRNAME);
   nf_unregister_hook(&hook_struct);
