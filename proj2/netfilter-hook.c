@@ -64,9 +64,11 @@ static unsigned int pre_routing_hook_impl(void *priv, struct sk_buff *skb, const
 
   return NF_ACCEPT;   // do forwarding or going up
 }
+
 // hook function for monitoring hook point "NF_INET_FORWARD"
 static unsigned int forward_hook_impl(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
   
+  // struct sk_buff *skb is packet
   // get ip header to get src/dest IPv4 address
   struct iphdr  *ih = ip_hdr(skb);
   // get tcp header to get src/dest port number
@@ -84,8 +86,25 @@ static unsigned int forward_hook_impl(void *priv, struct sk_buff *skb, const str
   return NF_ACCEPT;   // do forwarding
 }
 
+// hook function for monitoring hook point "NF_INET_POST_ROUTING"
 static unsigned int post_routing_hook_impl(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
+
+  // struct sk_buff *skb is packet
+  // get ip header to get src/dest IPv4 address
+  struct iphdr  *ih = ip_hdr(skb);
+  // get tcp header to get src/dest port number
+  struct tcphdr *th = tcp_hdr(skb);
+
+  // struct sk_buff *skb is packet
+  printk(KERN_INFO "  POST_ROUTING[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
+            ipheader->protocol,
+            ntohs(th->source),  // should be 7777
+            ntohs(th->dest),    // should be 7777
+            NIPQUAD(ih->saddr),
+            NIPQUAD(ih->daddr)
+          );
   
+  return NF_ACCEPT;   // do routing
 }
 
 // struct for setting hook at pre routing
