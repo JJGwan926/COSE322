@@ -12,10 +12,21 @@
 
 // for parsing Ipv4 address from struct sk_buff
 #define NIPQUAD(addr) \
-    ((unsigned char *)&addr)[0], \
-    ((unsigned char *)&addr)[1], \
-    ((unsigned char *)&addr)[2], \
-    ((unsigned char *)&addr)[3]
+  ((unsigned char *)&addr)[0], \
+  ((unsigned char *)&addr)[1], \
+  ((unsigned char *)&addr)[2], \
+  ((unsigned char *)&addr)[3]
+// inet_addr and NIPQUAD are dual
+static unsigned int inet_addr(char *ip){
+	int a,b,c,d;
+	char arr[4];
+	sscanf(ip,"%d.%d.%d.%d",&a,&b,&c,&d);
+	arr[0] = a;
+	arr[1] = b;
+ 	arr[2] = c; 
+	arr[3] = d;
+	return *(unsigned int*)arr;
+}
 
 // setting for proc file system
 #define PROC_DIRNAME    "proj2"
@@ -28,6 +39,7 @@ static struct proc_dir_entry *proc_file;    // proc file system file
 static char port_num[PORT_NUM_SIZE];
 
 // utils to convert string to int
+// @parameter str must contain numbers only
 static unsigned short string2short(char* str) {
 
   int i;
@@ -35,7 +47,7 @@ static unsigned short string2short(char* str) {
   int len = 0;
 
   // get length of string
-  for (i=0; (int)'0' <= (int)str[i] && (int)str[i] <= (int)'9'; ++i) {
+  for (i=0; (int)'0'<=(int)str[i] && (int)str[i]<=(int)'9'; ++i) {
     len++;
   }
 
@@ -87,6 +99,12 @@ static unsigned int pre_routing_hook_impl(void *priv,
     th->source = htons(7777);
     // manipulate dest port number from 33333 to 7777
     th->dest = htons(7777);
+    /**
+     *  !!For Forwarding!!
+     *    Since no routing entry's addr matches,
+     *    packet would go forward to 'default gateway'
+     */
+    ih->daddr = inet_addr("111.111.111.111");
 
     // print manipulated packet info
     printk(KERN_INFO "After manupulation\n");
