@@ -20,17 +20,51 @@
 // setting for proc file system
 #define PROC_DIRNAME    "proj2"
 #define PROC_FILENAME   "proj2-procfile"
-#define PORT_NUM_SIZE   5
+#define PORT_NUM_SIZE   6
 static struct proc_dir_entry *proc_dir;     // proc file system directory
 static struct proc_dir_entry *proc_file;    // proc file system file
 
 // variable for port number
-char        port_num[PORT_NUM_SIZE];
-static int  finished = 0;
+static char port_num[PORT_NUM_SIZE];
 
+// utils to convert string to int
+static unsigned short string2short(char* str) {
+
+  int i;
+  unsigned short num = 0;
+  int len = 0;
+
+  // get length of string
+  for (i=0; (int)'0' <= (int)str[i] && (int)str[i] <= (int)'9'; ++i) {
+    len++;
+  }
+
+  // convert string to int
+  for (i=len-1; i>=0; --i) {
+    
+    unsigned short c = (unsigned short)str[i];
+
+    if ((unsigned short)'0' <= c && c <= (unsigned short)'9') {
+      
+      int j;
+      int order = 1;
+      for (j=0; j<i; ++j) {
+        order *= 10;
+      }
+      num += ((c - (unsigned short)'0') * order);
+    } else {
+      printk(KERN_INFO "NaN");
+      return -1;  // error
+    }
+  }
+
+  return num;
+}
 
 // hook function for monitoring hook point "NF_INET_PRE_ROUTING"
-static unsigned int pre_routing_hook_impl(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
+static unsigned int pre_routing_hook_impl(void *priv, 
+                                          struct sk_buff *skb, 
+                                          const struct nf_hook_state *state) {
   
   // struct sk_buff *skb is packet
   // get ip header to get src/dest IPv4 address
@@ -39,7 +73,7 @@ static unsigned int pre_routing_hook_impl(void *priv, struct sk_buff *skb, const
   struct tcphdr *th = tcp_hdr(skb);
   
   // if destination port is 33333, then do forwarding
-  if (ntohs(th->dest) == 33333) {
+  if (ntohs(th->dest) == string2short(port_num)) {
     // print captured packet info before manipulation
     printk(KERN_INFO "Before manipulation\n");
     printk(KERN_INFO "  PRE_ROUTING[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
@@ -69,7 +103,9 @@ static unsigned int pre_routing_hook_impl(void *priv, struct sk_buff *skb, const
 }
 
 // hook function for monitoring hook point "NF_INET_FORWARD"
-static unsigned int forward_hook_impl(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
+static unsigned int forward_hook_impl(void *priv,
+                                      struct sk_buff *skb, 
+                                      const struct nf_hook_state *state) {
   
   // struct sk_buff *skb is packet
   // get ip header to get src/dest IPv4 address
@@ -77,6 +113,7 @@ static unsigned int forward_hook_impl(void *priv, struct sk_buff *skb, const str
   // get tcp header to get src/dest port number
   struct tcphdr *th = tcp_hdr(skb);
 
+  // print manipulated packet only
   if (ntohs(th->source) == 7777 && ntohs(th->dest) == 7777) {
     // struct sk_buff *skb is packet
     printk(KERN_INFO "  FORWARD[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
@@ -92,7 +129,9 @@ static unsigned int forward_hook_impl(void *priv, struct sk_buff *skb, const str
 }
 
 // hook function for monitoring hook point "NF_INET_POST_ROUTING"
-static unsigned int post_routing_hook_impl(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
+static unsigned int post_routing_hook_impl(void *priv, 
+                                           struct sk_buff *skb, 
+                                           const struct nf_hook_state *state) {
 
   // struct sk_buff *skb is packet
   // get ip header to get src/dest IPv4 address
@@ -100,15 +139,18 @@ static unsigned int post_routing_hook_impl(void *priv, struct sk_buff *skb, cons
   // get tcp header to get src/dest port number
   struct tcphdr *th = tcp_hdr(skb);
 
-  // struct sk_buff *skb is packet
-  printk(KERN_INFO "  POST_ROUTING[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
-            ih->protocol,
-            ntohs(th->source),  // should be 7777
-            ntohs(th->dest),    // should be 7777
-            NIPQUAD(ih->saddr),
-            NIPQUAD(ih->daddr)
-          );
-  
+  // print manipulated packet only
+  if (ntohs(th->source) == 7777 && ntohs(th->dest) == 7777) {
+    // struct sk_buff *skb is packet
+    printk(KERN_INFO "  POST_ROUTING[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
+              ih->protocol,
+              ntohs(th->source),  // should be 7777
+              ntohs(th->dest),    // should be 7777
+              NIPQUAD(ih->saddr),
+              NIPQUAD(ih->daddr)
+            );
+  }
+
   return NF_ACCEPT;   // do routing
 }
 
@@ -143,30 +185,17 @@ static int my_open(struct inode *inode, struct file *file) {
   return 0;
 }
 
-// custom read function for reading proc file
-static ssize_t my_read(struct file *file, char *buffer, size_t length, loff_t *offset) {
-
-  if (finished == 1) {
-    return 0;
-  }
-
-  printk(KERN_INFO "read");
-  // copy kernel's data into user buffer if written
-  if ( copy_to_user(buffer, port_num, PORT_NUM_SIZE) ) {   // copy_to_user returns 0 in error
-    return -EFAULT;
-  }
-
-  finished = 1;
-
-  return length;
-}
-
 // custom write function for writing to proc file
-static ssize_t my_write(struct file *file, const char __user *user_buffer, size_t count, loff_t *ppos) {
+static ssize_t my_write(struct file *file, 
+                        const char __user *user_buffer, 
+                        size_t count, 
+                        loff_t *ppos) {
 
+  // for debugging
   printk(KERN_INFO "write");
-  // set port number to be used
-  sprintf(port_num, "7777");
+  // set port number to be victimmed for forwarding
+  sprintf(port_num, "%s", user_buffer);
+  string2short(port_num);
 
   return count;
 }
@@ -175,7 +204,6 @@ static ssize_t my_write(struct file *file, const char __user *user_buffer, size_
 static const struct file_operations proc_fops = {
   .owner = THIS_MODULE,
   .open = my_open,
-  .read = my_read,
   .write = my_write,
 };
 
