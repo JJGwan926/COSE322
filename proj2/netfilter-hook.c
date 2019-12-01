@@ -101,8 +101,8 @@ static unsigned int pre_routing_hook_impl(void *priv,
     th->dest = htons(7777);
     /**
      *  !!For Forwarding!!
-     *    Since no routing entry's addr matches,
-     *    packet would go forward to 'default gateway'
+     *    We will add routing entry of Ipv4 addr 111.111.111.111.
+     *    Packet would be forwarded to 111.111.111.111.
      */
     ih->daddr = inet_addr("111.111.111.111");
 
