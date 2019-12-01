@@ -1,6 +1,6 @@
 /**
  *  author: Minsu Kim
- *  date: 2019.11.07
+ *  date: 2019.12.01
  *  description: client-side socket communication program
  */
 #include <stdio.h>
@@ -134,7 +134,7 @@ void *receiveServerMsg(void *pThreadArgs) {
     }
 
     //    while ( (msgLen = recv(socketFd, msg, 10, 0) ) != -1) {
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < 10; ++i) {
         char logMsg[80];
         msgLen = recv(socketFd, msg, MSG_SIZE, 0);
         sprintf(logMsg, "%s  %d  %s", getCurrentTime(), msgLen, msg);

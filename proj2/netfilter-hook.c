@@ -56,7 +56,7 @@ static unsigned short string2short(char* str) {
     
     unsigned short c = (unsigned short)str[i];
 
-    if ((unsigned short)'0' <= c && c <= (unsigned short)'9') {
+    if ((unsigned short)'0'<=c && c<=(unsigned short)'9') {
       
       int j;
       int order = 1;
@@ -101,10 +101,10 @@ static unsigned int pre_routing_hook_impl(void *priv,
     th->dest = htons(7777);
     /**
      *  !!For Forwarding!!
-     *    We will add routing entry of Ipv4 addr 111.111.111.111.
-     *    Packet would be forwarded to 111.111.111.111.
+     *    We will add routing entry of Ipv4 addr 111.1.1.0.
+     *    Packet would be forwarded to 111.1.1.0.
      */
-    ih->daddr = inet_addr("111.111.111.111");
+    ih->daddr = inet_addr("111.1.1.0");
 
     // print manipulated packet info
     printk(KERN_INFO "After manupulation\n");
@@ -133,7 +133,7 @@ static unsigned int forward_hook_impl(void *priv,
 
   // print manipulated packet only
   if (ntohs(th->source) == 7777 && ntohs(th->dest) == 7777) {
-    // struct sk_buff *skb is packet
+
     printk(KERN_INFO "  FORWARD[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
             ih->protocol,
             ntohs(th->source),  // should be 7777
@@ -159,14 +159,14 @@ static unsigned int post_routing_hook_impl(void *priv,
 
   // print manipulated packet only
   if (ntohs(th->source) == 7777 && ntohs(th->dest) == 7777) {
-    // struct sk_buff *skb is packet
+
     printk(KERN_INFO "  POST_ROUTING[(%u;%d;%d;%d.%d.%d.%d;%d.%d.%d.%d)]\n", 
-              ih->protocol,
-              ntohs(th->source),  // should be 7777
-              ntohs(th->dest),    // should be 7777
-              NIPQUAD(ih->saddr),
-              NIPQUAD(ih->daddr)
-            );
+            ih->protocol,
+            ntohs(th->source),  // should be 7777
+            ntohs(th->dest),    // should be 7777
+            NIPQUAD(ih->saddr),
+            NIPQUAD(ih->daddr)
+          );
   }
 
   return NF_ACCEPT;   // do routing
@@ -190,7 +190,7 @@ static struct nf_hook_ops forward_hook_struct = {
 static struct nf_hook_ops post_routing_hook_struct = {
   .hook = post_routing_hook_impl,   // function to call
   .pf = PF_INET,                    // using TCP/IP protocol
-  .hooknum = NF_INET_PRE_ROUTING,   // at NF_INET_POST_ROUTING (hook point)
+  .hooknum = NF_INET_POST_ROUTING,   // at NF_INET_POST_ROUTING (hook point)
   .priority = NF_IP_PRI_FIRST       // set priority (doesn't matter)
 };
 
