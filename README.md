@@ -59,3 +59,6 @@ $ ./client < input.txt
 
 - 실행하려면 virtualbox의 서버와 클라이언트 vm의 <b>설정->네트워크->다음에 연결됨</b>에서 NAT 말고 호스트 전용 어댑터로 바꿔줘야 함
 
+### Project 2
+
+---
